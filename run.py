@@ -1,8 +1,11 @@
-import os
-import sys
 import subprocess
+import sys
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-print('Starting WhisperWriter...')
 load_dotenv()
-subprocess.run([sys.executable, os.path.join('src', 'main.py')])
+
+main_script = Path(__file__).parent / 'src' / 'main.py'
+result = subprocess.run([sys.executable, str(main_script)])
+sys.exit(result.returncode)
