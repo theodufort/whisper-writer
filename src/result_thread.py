@@ -104,33 +104,88 @@ class ResultThread(QThread):
         finally:
             self.stop_recording()
 
+    def _resample(self, audio: np.ndarray, from_rate: int, to_rate: int) -> np.ndarray:
+        """Resample audio from from_rate to to_rate using linear interpolation."""
+        if from_rate == to_rate:
+            return audio
+        target_len = int(len(audio) * to_rate / from_rate)
+        resampled = np.interp(
+            np.linspace(0, len(audio) - 1, target_len),
+            np.arange(len(audio)),
+            audio.astype(np.float32),
+        ).astype(np.int16)
+        return resampled
+
+    def _query_device_rate(self, device) -> int:
+        """Return the native sample rate for the given device index (or system default)."""
+        try:
+            info = sd.query_devices(device, 'input') if device is not None \
+                else sd.query_devices(kind='input')
+            return int(info['default_samplerate'])
+        except Exception:
+            return 16000
+
+    def _open_input_stream(self, device, rate: int, frame_size: int, callback):
+        """
+        Try to open an InputStream for *device* at *rate*.
+        If that fails, warn and fall back to the system default device.
+        Returns (stream, actual_device, actual_rate).
+        """
+        try:
+            stream = sd.InputStream(samplerate=rate, channels=1, dtype='int16',
+                                    blocksize=frame_size, device=device,
+                                    callback=callback)
+            stream.start()
+            return stream, device, rate
+        except sd.PortAudioError as exc:
+            ConfigManager.console_print(
+                f"Failed to open device {device} ({exc}). Falling back to system default."
+            )
+            fallback_rate = self._query_device_rate(None)
+            stream = sd.InputStream(samplerate=fallback_rate, channels=1, dtype='int16',
+                                    blocksize=int(fallback_rate * 0.030), device=None,
+                                    callback=callback)
+            stream.start()
+            return stream, None, fallback_rate
+
     def _record_audio(self):
         """
-        Record audio from the microphone and save it to a temporary file.
+        Record audio from the microphone.
 
-        :return: numpy array of audio data, or None if the recording is too short
+        :return: numpy array of audio data at self.sample_rate, or None if too short
         """
         recording_options = ConfigManager.get_config_section('recording_options')
         self.sample_rate = recording_options.get('sample_rate') or 16000
-        frame_duration_ms = 30  # 30ms frame duration for WebRTC VAD
-        frame_size = int(self.sample_rate * (frame_duration_ms / 1000.0))
+
+        raw_device = recording_options.get('sound_device')
+        try:
+            sound_device = int(raw_device) if raw_device not in (None, '', 'null') else None
+        except (ValueError, TypeError):
+            sound_device = None
+
+        record_rate = self._query_device_rate(sound_device)
+
+        # webrtcvad only supports these rates
+        _VAD_RATES = (8000, 16000, 32000, 48000)
+        vad_rate = record_rate if record_rate in _VAD_RATES else 16000
+
+        frame_duration_ms = 30  # ms — required by webrtcvad
+        frame_size = int(record_rate * (frame_duration_ms / 1000.0))
         silence_duration_ms = recording_options.get('silence_duration') or 900
         silence_frames = int(silence_duration_ms / frame_duration_ms)
 
-        # 150ms delay before starting VAD to avoid mistaking the sound of key pressing for voice
-        initial_frames_to_skip = int(0.15 * self.sample_rate / frame_size)
+        # 150ms delay before VAD to avoid mistaking key-press sound for voice
+        initial_frames_to_skip = int(0.15 * record_rate / frame_size)
 
-        # Create VAD only for recording modes that use it
         recording_mode = recording_options.get('recording_mode') or 'continuous'
         vad = None
         if recording_mode in ('voice_activity_detection', 'continuous'):
-            vad = webrtcvad.Vad(2)  # VAD aggressiveness: 0 to 3, 3 being the most aggressive
+            vad = webrtcvad.Vad(2)
             speech_detected = False
             silent_frame_count = 0
 
         audio_buffer = deque(maxlen=frame_size)
         recording = []
-
         data_ready = Event()
 
         def audio_callback(indata, frames, time, status):
@@ -139,9 +194,15 @@ class ResultThread(QThread):
             audio_buffer.extend(indata[:, 0])
             data_ready.set()
 
-        with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype='int16',
-                            blocksize=frame_size, device=recording_options.get('sound_device'),
-                            callback=audio_callback):
+        stream, sound_device, record_rate = self._open_input_stream(
+            sound_device, record_rate, frame_size, audio_callback
+        )
+
+        # Recalculate frame_size in case we fell back to a different rate/device
+        frame_size = int(record_rate * (frame_duration_ms / 1000.0))
+        vad_rate = record_rate if record_rate in _VAD_RATES else 16000
+
+        try:
             while self.is_running and self.is_recording:
                 data_ready.wait()
                 data_ready.clear()
@@ -149,18 +210,18 @@ class ResultThread(QThread):
                 if len(audio_buffer) < frame_size:
                     continue
 
-                # Save frame
                 frame = np.array(list(audio_buffer), dtype=np.int16)
                 audio_buffer.clear()
                 recording.extend(frame)
 
-                # Avoid trying to detect voice in initial frames
                 if initial_frames_to_skip > 0:
                     initial_frames_to_skip -= 1
                     continue
 
                 if vad:
-                    if vad.is_speech(frame.tobytes(), self.sample_rate):
+                    vad_frame = self._resample(frame, record_rate, vad_rate) \
+                        if record_rate != vad_rate else frame
+                    if vad.is_speech(vad_frame.tobytes(), vad_rate):
                         silent_frame_count = 0
                         if not speech_detected:
                             ConfigManager.console_print("Speech detected.")
@@ -170,16 +231,23 @@ class ResultThread(QThread):
 
                     if speech_detected and silent_frame_count > silence_frames:
                         break
+        finally:
+            stream.stop()
+            stream.close()
 
         audio_data = np.array(recording, dtype=np.int16)
-        duration = len(audio_data) / self.sample_rate
 
-        ConfigManager.console_print(f'Recording finished. Size: {audio_data.size} samples, Duration: {duration:.2f} seconds')
+        if record_rate != self.sample_rate:
+            audio_data = self._resample(audio_data, record_rate, self.sample_rate)
+
+        duration = len(audio_data) / self.sample_rate
+        ConfigManager.console_print(
+            f'Recording finished. Size: {audio_data.size} samples, Duration: {duration:.2f} seconds'
+        )
 
         min_duration_ms = recording_options.get('min_duration') or 100
-
         if (duration * 1000) < min_duration_ms:
-            ConfigManager.console_print(f'Discarded due to being too short.')
+            ConfigManager.console_print('Discarded due to being too short.')
             return None
 
         return audio_data

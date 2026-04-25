@@ -42,36 +42,60 @@ class SettingsWindow(BaseWindow):
         for category, settings in self.schema.items():
             tab = QWidget()
             tab_layout = QVBoxLayout()
+            tab_layout.setSpacing(2)
+            tab_layout.setContentsMargins(8, 10, 8, 10)
             tab.setLayout(tab_layout)
             self.tabs.addTab(tab, category.replace('_', ' ').capitalize())
 
             self.create_settings_widgets(tab_layout, category, settings)
-            tab_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
+            tab_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
     def create_settings_widgets(self, layout, category, settings):
         """Create widgets for each setting in a category."""
+        row_index = [0]
         for sub_category, sub_settings in settings.items():
             if isinstance(sub_settings, dict) and 'value' in sub_settings:
-                self.add_setting_widget(layout, sub_category, sub_settings, category)
+                self.add_setting_widget(layout, sub_category, sub_settings, category, row_index=row_index[0])
+                row_index[0] += 1
             else:
                 for key, meta in sub_settings.items():
-                    self.add_setting_widget(layout, key, meta, category, sub_category)
+                    self.add_setting_widget(layout, key, meta, category, sub_category, row_index=row_index[0])
+                    row_index[0] += 1
 
     def create_buttons(self):
         """Create reset and save buttons."""
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
+
         reset_button = QPushButton('Reset to saved settings')
+        reset_button.setObjectName('reset_btn')
         reset_button.clicked.connect(self.reset_settings)
-        self.main_layout.addWidget(reset_button)
 
         save_button = QPushButton('Save')
         save_button.clicked.connect(self.save_settings)
-        self.main_layout.addWidget(save_button)
 
-    def add_setting_widget(self, layout, key, meta, category, sub_category=None):
+        btn_layout.addWidget(reset_button)
+        btn_layout.addWidget(save_button)
+        self.main_layout.addLayout(btn_layout)
+
+    def add_setting_widget(self, layout, key, meta, category, sub_category=None, row_index=0):
         """Add a setting widget to the layout."""
-        item_layout = QHBoxLayout()
+        # Row container with alternating background
+        row_container = QWidget()
+        bg = "rgba(74, 124, 249, 0.04)" if row_index % 2 == 0 else "transparent"
+        row_container.setStyleSheet(f"""
+            QWidget {{
+                background: {bg};
+                border-radius: 7px;
+            }}
+        """)
+        item_layout = QHBoxLayout(row_container)
+        item_layout.setContentsMargins(10, 6, 8, 6)
+        item_layout.setSpacing(8)
+
         label = QLabel(f"{key.replace('_', ' ').capitalize()}:")
         label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        label.setStyleSheet("background: transparent; color: #344054; font-size: 13px;")
 
         widget = self.create_widget_for_type(key, meta, category, sub_category)
         if not widget:
@@ -85,7 +109,7 @@ class SettingsWindow(BaseWindow):
         else:
             item_layout.addLayout(widget)
         item_layout.addWidget(help_button)
-        layout.addLayout(item_layout)
+        layout.addWidget(row_container)
 
         # Set object names for the widget, label, and help button
         widget_name = f"{category}_{sub_category}_{key}_input" if sub_category else f"{category}_{key}_input"
@@ -132,7 +156,7 @@ class SettingsWindow(BaseWindow):
         return widget
 
     def create_line_edit(self, value, key=None):
-        widget = QLineEdit(value)
+        widget = QLineEdit(str(value) if value is not None else '')
         if key == 'api_key':
             widget.setEchoMode(QLineEdit.Password)
             widget.setText(os.getenv('OPENAI_API_KEY') or value)
@@ -140,10 +164,13 @@ class SettingsWindow(BaseWindow):
             layout = QHBoxLayout()
             layout.addWidget(widget)
             browse_button = QPushButton('Browse')
+            browse_button.setFixedWidth(72)
+            browse_button.setStyleSheet("")  # inherit global QPushButton style unobstructed
             browse_button.clicked.connect(lambda: self.browse_model_path(widget))
             layout.addWidget(browse_button)
             layout.setContentsMargins(0, 0, 0, 0)
             container = QWidget()
+            container.setStyleSheet("background: transparent;")
             container.setLayout(layout)
             return container
         return widget

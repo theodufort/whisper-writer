@@ -26,19 +26,21 @@ class StatusWindow(BaseWindow):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         
         status_layout = QHBoxLayout()
-        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setContentsMargins(4, 0, 8, 0)
+        status_layout.setSpacing(10)
 
         self.icon_label = QLabel()
-        self.icon_label.setFixedSize(32, 32)
+        self.icon_label.setFixedSize(28, 28)
         microphone_path = os.path.join('assets', 'microphone.png')
         pencil_path = os.path.join('assets', 'pencil.png')
-        self.microphone_pixmap = QPixmap(microphone_path).scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.pencil_pixmap = QPixmap(pencil_path).scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.microphone_pixmap = QPixmap(microphone_path).scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.pencil_pixmap = QPixmap(pencil_path).scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.icon_label.setPixmap(self.microphone_pixmap)
         self.icon_label.setAlignment(Qt.AlignCenter)
 
         self.status_label = QLabel('Recording...')
-        self.status_label.setFont(QFont('Segoe UI', 12))
+        self.status_label.setFont(QFont('Segoe UI', 11, QFont.Medium))
+        self.status_label.setStyleSheet("color: #4A7CF9; background: transparent;")
 
         status_layout.addStretch(1)
         status_layout.addWidget(self.icon_label)
