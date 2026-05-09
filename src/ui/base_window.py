@@ -1,13 +1,39 @@
 import os
+import sys
 
-from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import QPainter, QBrush, QColor, QFont, QPainterPath, QGuiApplication, QLinearGradient, QPen, QPixmap
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QMainWindow, QFrame
+from PyQt5.QtCore import QRectF, Qt
+from PyQt5.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QGuiApplication,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+)
+from PyQt5.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-_ASSETS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..', 'assets'))
+if hasattr(sys, "_MEIPASS"):
+    # Frozen: assets are bundled at the root of sys._MEIPASS
+    _ASSETS_DIR = os.path.join(sys._MEIPASS, "assets")
+else:
+    # Development: two levels up from src/ui/ reaches the project root
+    _ASSETS_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "assets"))
+
 
 def _asset(name):
-    return os.path.join(_ASSETS_DIR, name).replace('\\', '/')
+    return os.path.join(_ASSETS_DIR, name).replace("\\", "/")
+
 
 STYLESHEET = f"""
 QWidget {{
@@ -69,7 +95,7 @@ QComboBox::drop-down {{
     width: 26px;
 }}
 QComboBox::down-arrow {{
-    image: url({_asset('caret-down.svg')});
+    image: url({_asset("caret-down.svg")});
     width: 14px;
     height: 14px;
 }}
@@ -95,7 +121,7 @@ QCheckBox::indicator {{
 QCheckBox::indicator:checked {{
     background: #4A7CF9;
     border: 1.5px solid #4A7CF9;
-    image: url({_asset('check.svg')});
+    image: url({_asset("check.svg")});
 }}
 QCheckBox::indicator:hover {{
     border: 1.5px solid #4A7CF9;
@@ -195,21 +221,23 @@ class BaseWindow(QMainWindow):
         center_layout.setContentsMargins(0, 0, 0, 0)
         center_layout.setSpacing(8)
 
-        logo_path = os.path.join(_ASSETS_DIR, 'ww-logo.png')
+        logo_path = os.path.join(_ASSETS_DIR, "ww-logo.png")
         if os.path.exists(logo_path):
             logo_label = QLabel()
-            logo_pixmap = QPixmap(logo_path).scaled(22, 22, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_pixmap = QPixmap(logo_path).scaled(
+                22, 22, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
             logo_label.setPixmap(logo_pixmap)
             center_layout.addWidget(logo_label)
 
-        title_label = QLabel('WhisperWriter')
-        title_label.setFont(QFont('Segoe UI', 12, QFont.Bold))
+        title_label = QLabel("WhisperWriter")
+        title_label.setFont(QFont("Segoe UI", 12, QFont.Bold))
         title_label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         title_label.setStyleSheet("color: #4A7CF9; background: transparent;")
         center_layout.addWidget(title_label)
 
         # Close button
-        close_button = QPushButton('×')
+        close_button = QPushButton("×")
         close_button.setFixedSize(28, 28)
         close_button.setStyleSheet("""
             QPushButton {
