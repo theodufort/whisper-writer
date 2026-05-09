@@ -1,13 +1,12 @@
 import time
 import traceback
-import numpy as np
-import sounddevice as sd
-import tempfile
-import wave
-import webrtcvad
-from PyQt5.QtCore import QThread, QMutex, pyqtSignal
 from collections import deque
 from threading import Event
+
+import numpy as np
+import sounddevice as sd
+import webrtcvad
+from PyQt5.QtCore import QMutex, QThread, pyqtSignal
 
 from transcription import transcribe
 from utils import ConfigManager
@@ -25,7 +24,8 @@ class ResultThread(QThread):
     5. Emitting the transcription result
 
     Signals:
-        statusSignal: Emits the current status of the thread (e.g., 'recording', 'transcribing', 'idle')
+        statusSignal: Emits the current status of the thread
+            (e.g., 'recording', 'transcribing', 'idle')
         resultSignal: Emits the transcription result
     """
 
@@ -56,7 +56,7 @@ class ResultThread(QThread):
         self.mutex.lock()
         self.is_running = False
         self.mutex.unlock()
-        self.statusSignal.emit('idle')
+        self.statusSignal.emit("idle")
         self.wait()
 
     def run(self):
@@ -69,19 +69,19 @@ class ResultThread(QThread):
             self.is_recording = True
             self.mutex.unlock()
 
-            self.statusSignal.emit('recording')
-            ConfigManager.console_print('Recording...')
+            self.statusSignal.emit("recording")
+            ConfigManager.console_print("Recording...")
             audio_data = self._record_audio()
 
             if not self.is_running:
                 return
 
             if audio_data is None:
-                self.statusSignal.emit('idle')
+                self.statusSignal.emit("idle")
                 return
 
-            self.statusSignal.emit('transcribing')
-            ConfigManager.console_print('Transcribing...')
+            self.statusSignal.emit("transcribing")
+            ConfigManager.console_print("Transcribing...")
 
             # Time the transcription process
             start_time = time.time()
@@ -89,18 +89,21 @@ class ResultThread(QThread):
             end_time = time.time()
 
             transcription_time = end_time - start_time
-            ConfigManager.console_print(f'Transcription completed in {transcription_time:.2f} seconds. Post-processed line: {result}')
+            ConfigManager.console_print(
+                f"Transcription completed in {transcription_time:.2f} seconds. "
+                f"Post-processed line: {result}"
+            )
 
             if not self.is_running:
                 return
 
-            self.statusSignal.emit('idle')
+            self.statusSignal.emit("idle")
             self.resultSignal.emit(result)
 
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
-            self.statusSignal.emit('error')
-            self.resultSignal.emit('')
+            self.statusSignal.emit("error")
+            self.resultSignal.emit("")
         finally:
             self.stop_recording()
 
@@ -119,9 +122,12 @@ class ResultThread(QThread):
     def _query_device_rate(self, device) -> int:
         """Return the native sample rate for the given device index (or system default)."""
         try:
-            info = sd.query_devices(device, 'input') if device is not None \
-                else sd.query_devices(kind='input')
-            return int(info['default_samplerate'])
+            info = (
+                sd.query_devices(device, "input")
+                if device is not None
+                else sd.query_devices(kind="input")
+            )
+            return int(info["default_samplerate"])
         except Exception:
             return 16000
 
@@ -132,9 +138,14 @@ class ResultThread(QThread):
         Returns (stream, actual_device, actual_rate).
         """
         try:
-            stream = sd.InputStream(samplerate=rate, channels=1, dtype='int16',
-                                    blocksize=frame_size, device=device,
-                                    callback=callback)
+            stream = sd.InputStream(
+                samplerate=rate,
+                channels=1,
+                dtype="int16",
+                blocksize=frame_size,
+                device=device,
+                callback=callback,
+            )
             stream.start()
             return stream, device, rate
         except sd.PortAudioError as exc:
@@ -142,9 +153,14 @@ class ResultThread(QThread):
                 f"Failed to open device {device} ({exc}). Falling back to system default."
             )
             fallback_rate = self._query_device_rate(None)
-            stream = sd.InputStream(samplerate=fallback_rate, channels=1, dtype='int16',
-                                    blocksize=int(fallback_rate * 0.030), device=None,
-                                    callback=callback)
+            stream = sd.InputStream(
+                samplerate=fallback_rate,
+                channels=1,
+                dtype="int16",
+                blocksize=int(fallback_rate * 0.030),
+                device=None,
+                callback=callback,
+            )
             stream.start()
             return stream, None, fallback_rate
 
@@ -154,12 +170,12 @@ class ResultThread(QThread):
 
         :return: numpy array of audio data at self.sample_rate, or None if too short
         """
-        recording_options = ConfigManager.get_config_section('recording_options')
-        self.sample_rate = recording_options.get('sample_rate') or 16000
+        recording_options = ConfigManager.get_config_section("recording_options")
+        self.sample_rate = recording_options.get("sample_rate") or 16000
 
-        raw_device = recording_options.get('sound_device')
+        raw_device = recording_options.get("sound_device")
         try:
-            sound_device = int(raw_device) if raw_device not in (None, '', 'null') else None
+            sound_device = int(raw_device) if raw_device not in (None, "", "null") else None
         except (ValueError, TypeError):
             sound_device = None
 
@@ -171,15 +187,15 @@ class ResultThread(QThread):
 
         frame_duration_ms = 30  # ms — required by webrtcvad
         frame_size = int(record_rate * (frame_duration_ms / 1000.0))
-        silence_duration_ms = recording_options.get('silence_duration') or 900
+        silence_duration_ms = recording_options.get("silence_duration") or 900
         silence_frames = int(silence_duration_ms / frame_duration_ms)
 
         # 150ms delay before VAD to avoid mistaking key-press sound for voice
         initial_frames_to_skip = int(0.15 * record_rate / frame_size)
 
-        recording_mode = recording_options.get('recording_mode') or 'continuous'
+        recording_mode = recording_options.get("recording_mode") or "continuous"
         vad = None
-        if recording_mode in ('voice_activity_detection', 'continuous'):
+        if recording_mode in ("voice_activity_detection", "continuous"):
             vad = webrtcvad.Vad(2)
             speech_detected = False
             silent_frame_count = 0
@@ -219,8 +235,11 @@ class ResultThread(QThread):
                     continue
 
                 if vad:
-                    vad_frame = self._resample(frame, record_rate, vad_rate) \
-                        if record_rate != vad_rate else frame
+                    vad_frame = (
+                        self._resample(frame, record_rate, vad_rate)
+                        if record_rate != vad_rate
+                        else frame
+                    )
                     if vad.is_speech(vad_frame.tobytes(), vad_rate):
                         silent_frame_count = 0
                         if not speech_detected:
@@ -242,12 +261,12 @@ class ResultThread(QThread):
 
         duration = len(audio_data) / self.sample_rate
         ConfigManager.console_print(
-            f'Recording finished. Size: {audio_data.size} samples, Duration: {duration:.2f} seconds'
+            f"Recording finished. Size: {audio_data.size} samples, Duration: {duration:.2f} seconds"
         )
 
-        min_duration_ms = recording_options.get('min_duration') or 100
+        min_duration_ms = recording_options.get("min_duration") or 100
         if (duration * 1000) < min_duration_ms:
-            ConfigManager.console_print('Discarded due to being too short.')
+            ConfigManager.console_print("Discarded due to being too short.")
             return None
 
         return audio_data
