@@ -4,10 +4,10 @@ from collections import deque
 from threading import Event
 
 import numpy as np
-import sounddevice as sd
 import webrtcvad
 from PyQt5.QtCore import QMutex, QThread, pyqtSignal
 
+from audio import open_input_stream, query_device_rate, resample
 from transcription import transcribe
 from utils import ConfigManager
 
@@ -107,63 +107,6 @@ class ResultThread(QThread):
         finally:
             self.stop_recording()
 
-    def _resample(self, audio: np.ndarray, from_rate: int, to_rate: int) -> np.ndarray:
-        """Resample audio from from_rate to to_rate using linear interpolation."""
-        if from_rate == to_rate:
-            return audio
-        target_len = int(len(audio) * to_rate / from_rate)
-        resampled = np.interp(
-            np.linspace(0, len(audio) - 1, target_len),
-            np.arange(len(audio)),
-            audio.astype(np.float32),
-        ).astype(np.int16)
-        return resampled
-
-    def _query_device_rate(self, device) -> int:
-        """Return the native sample rate for the given device index (or system default)."""
-        try:
-            info = (
-                sd.query_devices(device, "input")
-                if device is not None
-                else sd.query_devices(kind="input")
-            )
-            return int(info["default_samplerate"])
-        except Exception:
-            return 16000
-
-    def _open_input_stream(self, device, rate: int, frame_size: int, callback):
-        """
-        Try to open an InputStream for *device* at *rate*.
-        If that fails, warn and fall back to the system default device.
-        Returns (stream, actual_device, actual_rate).
-        """
-        try:
-            stream = sd.InputStream(
-                samplerate=rate,
-                channels=1,
-                dtype="int16",
-                blocksize=frame_size,
-                device=device,
-                callback=callback,
-            )
-            stream.start()
-            return stream, device, rate
-        except sd.PortAudioError as exc:
-            ConfigManager.console_print(
-                f"Failed to open device {device} ({exc}). Falling back to system default."
-            )
-            fallback_rate = self._query_device_rate(None)
-            stream = sd.InputStream(
-                samplerate=fallback_rate,
-                channels=1,
-                dtype="int16",
-                blocksize=int(fallback_rate * 0.030),
-                device=None,
-                callback=callback,
-            )
-            stream.start()
-            return stream, None, fallback_rate
-
     def _record_audio(self):
         """
         Record audio from the microphone.
@@ -179,7 +122,7 @@ class ResultThread(QThread):
         except (ValueError, TypeError):
             sound_device = None
 
-        record_rate = self._query_device_rate(sound_device)
+        record_rate = query_device_rate(sound_device)
 
         # webrtcvad only supports these rates
         _VAD_RATES = (8000, 16000, 32000, 48000)
@@ -210,7 +153,7 @@ class ResultThread(QThread):
             audio_buffer.extend(indata[:, 0])
             data_ready.set()
 
-        stream, sound_device, record_rate = self._open_input_stream(
+        stream, sound_device, record_rate = open_input_stream(
             sound_device, record_rate, frame_size, audio_callback
         )
 
@@ -236,9 +179,7 @@ class ResultThread(QThread):
 
                 if vad:
                     vad_frame = (
-                        self._resample(frame, record_rate, vad_rate)
-                        if record_rate != vad_rate
-                        else frame
+                        resample(frame, record_rate, vad_rate) if record_rate != vad_rate else frame
                     )
                     if vad.is_speech(vad_frame.tobytes(), vad_rate):
                         silent_frame_count = 0
@@ -257,7 +198,7 @@ class ResultThread(QThread):
         audio_data = np.array(recording, dtype=np.int16)
 
         if record_rate != self.sample_rate:
-            audio_data = self._resample(audio_data, record_rate, self.sample_rate)
+            audio_data = resample(audio_data, record_rate, self.sample_rate)
 
         duration = len(audio_data) / self.sample_rate
         ConfigManager.console_print(

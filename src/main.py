@@ -6,9 +6,9 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from input_simulation import InputSimulator
-from key_listener import KeyListener
+from keylistener import KeyListener
+from model import create_local_model
 from result_thread import ResultThread
-from transcription import create_local_model
 from ui.main_window import MainWindow
 from ui.settings_window import SettingsWindow
 from ui.status_window import StatusWindow
@@ -55,7 +55,6 @@ class WhisperWriterApp(QObject):
         self.key_listener.add_callback("on_deactivate", self.on_deactivation)
 
         model_options = ConfigManager.get_config_section("model_options")
-        model_path = model_options.get("local", {}).get("model_path")
         self.local_model = create_local_model() if not model_options.get("use_api") else None
 
         self.result_thread = None
