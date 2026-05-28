@@ -1,3 +1,5 @@
+import importlib
+import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum, auto
@@ -424,20 +426,15 @@ class EvdevBackend(InputBackend):
     @classmethod
     def is_available(cls) -> bool:
         """Check if the evdev library is available."""
-        try:
-            import evdev
-
-            return True
-        except ImportError:
-            return False
+        return importlib.util.find_spec("evdev") is not None
 
     def __init__(self):
         """Initialize the EvdevBackend."""
-        self.devices: List[evdev.InputDevice] = []
-        self.key_map: Optional[dict] = None
+        self.devices: list = []
+        self.key_map: dict | None = None
         self.evdev = None
-        self.thread: Optional[threading.Thread] = None
-        self.stop_event: Optional[threading.Event] = None
+        self.thread: threading.Thread | None = None
+        self.stop_event: threading.Event | None = None
 
     def start(self):
         """Start the evdev backend."""
@@ -747,12 +744,7 @@ class PynputBackend(InputBackend):
     @classmethod
     def is_available(cls) -> bool:
         """Check if pynput library is available."""
-        try:
-            import pynput
-
-            return True
-        except ImportError:
-            return False
+        return importlib.util.find_spec("pynput") is not None
 
     def __init__(self):
         """Initialize PynputBackend."""
