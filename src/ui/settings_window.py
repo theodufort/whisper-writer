@@ -1,5 +1,8 @@
+"""Settings dialog for WhisperWriter configuration."""
+
+from __future__ import annotations
+
 import os
-import sys
 
 from dotenv import load_dotenv, set_key
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -21,9 +24,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from core.config import ConfigManager
 from ui.base_window import BaseWindow
-from utils import ConfigManager
 
 load_dotenv()
 
