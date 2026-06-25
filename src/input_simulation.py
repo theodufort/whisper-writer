@@ -5,7 +5,7 @@ import time
 
 from pynput.keyboard import Controller as PynputController
 
-from utils import ConfigManager
+from core.config import ConfigManager
 
 
 def run_command_or_exit_on_failure(command):

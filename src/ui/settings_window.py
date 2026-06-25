@@ -163,7 +163,9 @@ class SettingsWindow(BaseWindow):
         meta_type = meta.get("type")
         current_value = self.get_config_value(category, sub_category, key, meta)
 
-        if meta_type == "bool":
+        if key == "sound_device":
+            return self.create_sound_device_combobox(current_value)
+        elif meta_type == "bool":
             return self.create_checkbox(current_value, key)
         elif meta_type == "str" and "options" in meta:
             return self.create_combobox(current_value, meta["options"])
@@ -180,10 +182,40 @@ class SettingsWindow(BaseWindow):
             widget.setObjectName("model_options_use_api_input")
         return widget
 
+    def create_sound_device_combobox(self, current_value):
+        """Create a combobox populated with available audio input devices."""
+        import sounddevice as sd
+
+        widget = QComboBox()
+        widget.setProperty("use_item_data", True)
+        widget.addItem("System default", None)
+
+        default_api = sd.query_hostapis(sd.default.hostapi)
+        api_devices = set(default_api["devices"])
+        devices = sd.query_devices()
+        for i, dev in enumerate(devices):
+            if dev["max_input_channels"] > 0 and i in api_devices:
+                widget.addItem(f"{i}: {dev['name']}", str(i))
+
+        if current_value not in (None, "", "null"):
+            idx = widget.findData(str(current_value))
+            if idx >= 0:
+                widget.setCurrentIndex(idx)
+        self._fix_combobox_popup(widget)
+        return widget
+
+    @staticmethod
+    def _fix_combobox_popup(widget):
+        """Ensure combobox dropdown is opaque on translucent windows."""
+        view = widget.view()
+        if view and view.viewport():
+            view.viewport().setAutoFillBackground(True)
+
     def create_combobox(self, value, options):
         widget = QComboBox()
         widget.addItems(options)
         widget.setCurrentText(value)
+        self._fix_combobox_popup(widget)
         return widget
 
     def create_line_edit(self, value, key=None):
@@ -281,7 +313,11 @@ class SettingsWindow(BaseWindow):
         if isinstance(widget, QCheckBox):
             widget.setChecked(value)
         elif isinstance(widget, QComboBox):
-            widget.setCurrentText(value)
+            if widget.property("use_item_data"):
+                idx = widget.findData(value)
+                widget.setCurrentIndex(idx if idx >= 0 else 0)
+            else:
+                widget.setCurrentText(str(value) if value is not None else "")
         elif isinstance(widget, QLineEdit):
             widget.setText(str(value) if value is not None else "")
         elif isinstance(widget, QWidget) and widget.layout():
@@ -295,6 +331,8 @@ class SettingsWindow(BaseWindow):
         if isinstance(widget, QCheckBox):
             return widget.isChecked()
         elif isinstance(widget, QComboBox):
+            if widget.property("use_item_data"):
+                return widget.currentData()
             return widget.currentText() or None
         elif isinstance(widget, QLineEdit):
             text = widget.text()

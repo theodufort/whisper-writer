@@ -9,7 +9,7 @@ from PyQt5.QtCore import QMutex, QThread, pyqtSignal
 
 from audio import open_input_stream, query_device_rate, resample
 from transcription import transcribe
-from utils import ConfigManager
+from core.config import ConfigManager
 
 
 class ResultThread(QThread):

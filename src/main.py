@@ -1,3 +1,4 @@
+import argparse
 import sys
 
 from audioplayer import AudioPlayer
@@ -9,16 +10,22 @@ from input_simulation import InputSimulator
 from keylistener import KeyListener
 from model import create_local_model
 from result_thread import ResultThread
+from tray_launcher import TrayService
 from ui.main_window import MainWindow
 from ui.settings_window import SettingsWindow
 from ui.status_window import StatusWindow
-from utils import ConfigManager, resource_path
+from core.config import ConfigManager
+from utils import resource_path
 
 
 class WhisperWriterApp(QObject):
-    def __init__(self):
+    def __init__(self, tray_only: bool = False, force_show: bool = False):
         """
         Initialize the application, opening settings window if no configuration file is found.
+
+        Args:
+            tray_only: If True, only create the tray icon (no main window).
+            force_show: If True, force-show the main window on startup.
         """
         super().__init__()
         self.app = QApplication(sys.argv)
@@ -31,12 +38,19 @@ class WhisperWriterApp(QObject):
         self.local_model = None
         self.main_window = None
         self.status_window = None
+        self.tray_service: TrayService | None = None
+
+        self._tray_only = tray_only
+        self._force_show = force_show
 
         ConfigManager.initialize()
 
         self.settings_window = SettingsWindow()
         self.settings_window.settings_closed.connect(self.on_settings_closed)
         self.settings_window.settings_saved.connect(self.restart_app)
+
+        # Always create tray icon first (before main window)
+        self._create_tray()
 
         if ConfigManager.config_file_exists():
             self.initialize_components()
@@ -67,33 +81,40 @@ class WhisperWriterApp(QObject):
         if not ConfigManager.get_config_value("misc", "hide_status_window"):
             self.status_window = StatusWindow()
 
-        self.create_tray_icon()
-        self.main_window.show()
+        # Show main window unless tray-only mode
+        if self._tray_only and not self._force_show:
+            self.main_window.hide()
+        else:
+            self.main_window.show()
 
-    def create_tray_icon(self):
-        """
-        Create the system tray icon and its context menu.
-        """
-        self.tray_icon = QSystemTrayIcon(QIcon(resource_path("assets/ww-logo.png")), self.app)
+    def _create_tray(self) -> None:
+        """Create the system tray icon using TrayService."""
+        self.tray_service = TrayService(
+            app_ref=self.app,
+            on_show_main=self._show_main,
+            on_open_settings=self.settings_window.show,
+            on_exit=self.exit_app,
+        )
+        self.tray_service.create()
 
-        tray_menu = QMenu()
+    def _show_main(self) -> None:
+        """Show the main window and bring it to focus."""
+        if self.main_window:
+            self.main_window.show()
+            self.main_window.raise_()
+            self.main_window.activateWindow()
 
-        show_action = QAction("WhisperWriter Main Menu", self.app)
-        show_action.triggered.connect(self.main_window.show)
-        tray_menu.addAction(show_action)
+    def set_tray_only(self, value: bool) -> None:
+        """Set tray-only mode (tray icon only, no main window)."""
+        self._tray_only = value
 
-        settings_action = QAction("Open Settings", self.app)
-        settings_action.triggered.connect(self.settings_window.show)
-        tray_menu.addAction(settings_action)
-
-        exit_action = QAction("Exit", self.app)
-        exit_action.triggered.connect(self.exit_app)
-        tray_menu.addAction(exit_action)
-
-        self.tray_icon.setContextMenu(tray_menu)
-        self.tray_icon.show()
+    def set_force_show(self, value: bool) -> None:
+        """Force show main window on startup."""
+        self._force_show = value
 
     def cleanup(self):
+        if self.result_thread and self.result_thread.isRunning():
+            self.result_thread.stop()
         if self.key_listener:
             self.key_listener.stop()
         if self.input_simulator:
