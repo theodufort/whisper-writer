@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum, auto
 
-from utils import ConfigManager
+from core.config import ConfigManager
 
 
 class InputEvent(Enum):

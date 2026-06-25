@@ -6,7 +6,7 @@ import soundfile as sf
 from openai import OpenAI
 
 from model import create_local_model
-from utils import ConfigManager
+from core.config import ConfigManager
 
 
 def transcribe_local(audio_data, local_model=None):

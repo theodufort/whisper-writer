@@ -1,6 +1,6 @@
 from faster_whisper import WhisperModel
 
-from utils import ConfigManager
+from core.config import ConfigManager
 
 
 def create_local_model():

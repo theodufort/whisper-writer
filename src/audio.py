@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import sounddevice as sd
 
-from utils import ConfigManager
+from core.config import ConfigManager
 
 
 def resample(audio: np.ndarray, from_rate: int, to_rate: int) -> np.ndarray:

@@ -88,6 +88,14 @@ QComboBox QAbstractItemView {{
     selection-color: white;
     outline: 0;
     padding: 2px;
+    color: #101828;
+}}
+QComboBox QAbstractItemView::item {{
+    padding: 4px 8px;
+    color: #101828;
+}}
+QComboBox QAbstractItemView::item:selected {{
+    color: white;
 }}
 QCheckBox {{
     spacing: 8px;

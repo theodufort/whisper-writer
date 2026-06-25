@@ -35,6 +35,13 @@ Edit `src/config.yaml` to customize:
 ### Logging
 Configured via `src/logging.conf` for debugging
 
+### Building
+To build a standalone executable:
+```bash
+pyinstaller whisper-writer.spec
+```
+The output will be in `dist/whisper-writer/`.
+
 ### Contributing
 1. Clone repository
 2. Install dependencies

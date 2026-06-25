@@ -3,13 +3,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-_SRC_DIR = Path(__file__).parent.parent
+_SRC_DIR = Path(__file__).parent.parent  # src/core/ -> src
+_PROJECT_ROOT = _SRC_DIR.parent           # src/
 if hasattr(sys, "_MEIPASS"):
     _BUNDLE_DIR = Path(sys._MEIPASS)
     _DATA_DIR = Path(sys.executable).parent
 else:
-    _BUNDLE_DIR = _SRC_DIR
-    _DATA_DIR = _SRC_DIR
+    _BUNDLE_DIR = _PROJECT_ROOT  # use project root so schema is found at src/config_schema.yaml
+    _DATA_DIR = _PROJECT_ROOT
 _LOGGING_CONF = _BUNDLE_DIR / "logging.conf"
 _DEFAULT_CONFIG_PATH = _DATA_DIR / "config.yaml"
 
