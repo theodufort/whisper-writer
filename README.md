@@ -10,9 +10,14 @@ A Python application for transcription and audio processing with a GUI.
 - Logging and debugging
 
 ### Installation
-```bash
-pip install -r requirements.txt
+GPU acceleration (AMD/Intel/NVIDIA via Vulkan) uses a locally built `pywhispercpp` wheel that is
+not committed to git. Prerequisites: Visual Studio 2022 C++ tools, the Vulkan SDK
+(`scoop install vulkan`) and `uv`. Then:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
 ```
+This builds the wheel into `vendor/` on first run (~5-10 min) and runs `uv sync`.
+Set `model_options.local.device: vulkan` in `config.yaml` (the default).
 
 ### Configuration
 Edit `src/config.yaml` to customize:

@@ -55,12 +55,13 @@ model_options:
         - large-v2
         - large-v3
     device:
-      value: auto
+      value: vulkan
       type: str
-      description: "The device to run the local Whisper model on. Use 'cuda' for NVIDIA GPUs, 'cpu' for CPU-only processing, or 'auto' to let the system automatically choose the best available device."
+      description: "The device to run the local Whisper model on. Use 'vulkan' for AMD/Intel/NVIDIA GPUs via whisper.cpp (requires pywhispercpp built with Vulkan), 'cuda' for NVIDIA GPUs via faster-whisper, 'cpu' for CPU-only processing, or 'auto' to let the system automatically choose the best available device."
       options:
         - auto
         - cuda
+        - vulkan
         - cpu
     compute_type:
       value: default
@@ -79,6 +80,10 @@ model_options:
       value: false
       type: bool
       description: "Set to true to use a voice activity detection (VAD) filter to remove silence from the recording."
+    unload_when_idle:
+      value: true
+      type: bool
+      description: "Load the model into (V)RAM when a recording starts and unload it when recording stops, freeing GPU memory while idle. Set to false to keep the model loaded for the lifetime of the app (fastest response, uses VRAM constantly)."
     model_path:
       value: null
       type: str

@@ -7,7 +7,7 @@ name = "whisper-writer"
 version = "1.0.1"
 description = "A small speech-to-text app that uses OpenAI's Whisper model to auto-transcribe microphone recordings."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "audioplayer>=0.6",
     "faster-whisper>=1.0.2",
@@ -15,6 +15,7 @@ dependencies = [
     "openai>=1.28",
     "pyinstaller>=6.20.0",
     "pynput>=1.7",
+    "pywhispercpp>=1.5",
     "PyQt5>=5.15,<5.15.11",
     "python-dotenv>=1.0",
     "PyYAML>=6.0",
@@ -50,3 +51,8 @@ select = ["E", "F", "I", "UP"]
 python_version = "3.13"
 strict = false
 ignore_missing_imports = true
+
+# PyPI only has CPU wheels of pywhispercpp. This Vulkan (AMD/Intel/NVIDIA GPU) build is vendored;
+# rebuild it with scripts/build_pywhispercpp_vulkan.ps1.
+[tool.uv.sources]
+pywhispercpp = { path = "vendor/pywhispercpp-1.5.1-cp313-cp313-win_amd64.whl" }

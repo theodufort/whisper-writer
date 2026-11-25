@@ -1,11 +1,12 @@
-import argparse
 import sys
+import threading
 
 from audioplayer import AudioPlayer
 from PyQt5.QtCore import QObject, QProcess
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QSystemTrayIcon
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
+from core.config import ConfigManager
 from input_simulation import InputSimulator
 from keylistener import KeyListener
 from model import create_local_model
@@ -14,7 +15,6 @@ from tray_launcher import TrayService
 from ui.main_window import MainWindow
 from ui.settings_window import SettingsWindow
 from ui.status_window import StatusWindow
-from core.config import ConfigManager
 from utils import resource_path
 
 
@@ -119,6 +119,8 @@ class WhisperWriterApp(QObject):
             self.key_listener.stop()
         if self.input_simulator:
             self.input_simulator.cleanup()
+        if self.local_model:
+            self.local_model.unload()  # release VRAM before the process exits / restarts
 
     def exit_app(self):
         """
@@ -177,11 +179,30 @@ class WhisperWriterApp(QObject):
             return
 
         self.result_thread = ResultThread(self.local_model)
+        if self.local_model:
+            # Load the model into VRAM while the user is speaking (no-op if already loaded)
+            threading.Thread(target=self.local_model.load, daemon=True).start()
+        self.result_thread.finished.connect(
+            lambda thread=self.result_thread: self._on_result_thread_finished(thread)
+        )
         if not ConfigManager.get_config_value("misc", "hide_status_window"):
             self.result_thread.statusSignal.connect(self.status_window.updateStatus)
             self.status_window.closeSignal.connect(self.stop_result_thread)
         self.result_thread.resultSignal.connect(self.on_transcription_complete)
         self.result_thread.start()
+
+    def _on_result_thread_finished(self, thread):
+        """Unload the model from VRAM once a recording session has truly ended.
+
+        In continuous mode the finished thread has already been replaced by a new one,
+        so the model stays loaded between auto-restarted segments.
+        """
+        if thread is not self.result_thread or not self.local_model:
+            return
+        if ConfigManager.get_config_value("model_options", "local", "unload_when_idle") is False:
+            return
+        # Off the UI thread: unload() waits on the model lock if a load is still running
+        threading.Thread(target=self.local_model.unload, daemon=True).start()
 
     def stop_result_thread(self):
         """

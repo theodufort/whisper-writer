@@ -135,3 +135,5 @@ config.yaml
 .qwen
 .ruff_cache
 .tmp
+# Locally built Vulkan wheel (see scripts/setup.ps1)
+vendor/*.whl
