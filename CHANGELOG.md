@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **GPU-accelerated local transcription on AMD, NVIDIA and Intel GPUs** through whisper.cpp and Vulkan
+  (`model_options.local.device: vulkan`, now the default). See `docs/gpu-acceleration.md`.
+- **Optional transcript cleanup** with a small local LLM (1-4B, llama.cpp on the GPU) that fixes mis-heard words,
+  punctuation and filler words (`model_options.cleanup.*`, off by default). See `docs/transcript-cleanup.md`.
+- Models are loaded into GPU memory when a recording starts and unloaded when the session ends
+  (`model_options.local.unload_when_idle`).
+- Models are downloaded once into a persistent cache (`%LOCALAPPDATA%\whisper-writer\models`, configurable with
+  `model_options.local.model_dir`) by a downloader that works in the windowed `.exe`.
+- `scripts/setup.ps1` (one-step install that builds the GPU libraries and can install the prerequisites),
+  `scripts/build.ps1` (builds the `.exe` and keeps `config.yaml`), `scripts/check_gpu.py` and
+  `scripts/generate_config_docs.py`.
+- Documentation: rewritten README, configuration reference, GPU, cleanup, packaging, troubleshooting and architecture guides.
+
+### Fixed
+- Whisper's `[BLANK_AUDIO]`, `[MUSIC]` and similar markers are no longer typed; silence produces no output.
+- The first dictation hung on "transcribing" in the packaged `.exe` because the model downloader needed a console.
+- The packaged `.exe` crashed when loading a llama.cpp model because PyQt5's outdated C++ runtime shadowed the current one.
+- Errors during recording/transcription are written to the log file instead of a console that does not exist in the `.exe`.
+- `whisper-writer.spec` was excluded from git by the generic `*.spec` ignore rule, so a fresh clone could not build the `.exe`. It is now tracked.
+
+### Changed
+- The Python version is pinned to 3.13 and dependencies are managed with `uv` (`pyproject.toml` / `uv.lock`).
+  The outdated `requirements.txt` was removed.
+- `src/model.py` now re-exports `transcription.model_factory.create_local_model`.
+
+_Earlier unreleased changes:_
+### Added
 - New settings window to configure WhisperWriter.
 - New main window to either start the keyboard listener or open the settings window.
 - New continuous recording mode ([Issue #40](https://github.com/savbell/whisper-writer/issues/40)).
