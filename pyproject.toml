@@ -16,6 +16,7 @@ dependencies = [
     "pyinstaller>=6.20.0",
     "pynput>=1.7",
     "pywhispercpp>=1.5",
+    "llama-cpp-python>=0.3.38",
     "PyQt5>=5.15,<5.15.11",
     "python-dotenv>=1.0",
     "PyYAML>=6.0",
@@ -52,7 +53,17 @@ python_version = "3.13"
 strict = false
 ignore_missing_imports = true
 
-# PyPI only has CPU wheels of pywhispercpp. This Vulkan (AMD/Intel/NVIDIA GPU) build is vendored;
-# rebuild it with scripts/build_pywhispercpp_vulkan.ps1.
+# GPU builds of two native libraries.
+# PyPI only ships CPU-only Windows wheels of pywhispercpp and llama-cpp-python, so on Windows these
+# two are taken from ./vendor, a local "flat" package index that scripts/setup.ps1 fills by
+# compiling them once with Vulkan enabled (works on AMD, NVIDIA and Intel GPUs). See docs/gpu-acceleration.md.
+# On other platforms they come from PyPI as usual.
+[[tool.uv.index]]
+name = "vendor"
+url = "vendor"
+format = "flat"
+explicit = true
+
 [tool.uv.sources]
-pywhispercpp = { path = "vendor/pywhispercpp-1.5.1-cp313-cp313-win_amd64.whl" }
+pywhispercpp = { index = "vendor", marker = "sys_platform == 'win32'" }
+llama-cpp-python = { index = "vendor", marker = "sys_platform == 'win32'" }

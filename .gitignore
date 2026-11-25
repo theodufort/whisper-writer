@@ -32,6 +32,8 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# ...but the project's own PyInstaller recipe must be committed (scripts/build.ps1 needs it)
+!whisper-writer.spec
 
 # Installer logs
 pip-log.txt
