@@ -3,7 +3,7 @@ from __future__ import annotations
 from core.config import ConfigManager
 from transcription.api import transcribe_api
 from transcription.local import transcribe_local
-from transcription.postprocess import post_process_transcription
+from transcription.postprocess import clean_transcription, post_process_transcription
 
 
 def transcribe(audio_data, local_model=None):
@@ -16,6 +16,8 @@ def transcribe(audio_data, local_model=None):
     else:
         transcription = transcribe_local(audio_data, local_model)
 
+    # Drop Whisper's non-speech markers such as [BLANK_AUDIO].
+    transcription = clean_transcription(transcription)
     return post_process_transcription(transcription)
 
 __all__ = ["transcribe"]

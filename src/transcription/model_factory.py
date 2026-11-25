@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import gc
+import logging
 import threading
 
 from faster_whisper import WhisperModel
 
 from core.config import ConfigManager
+
+logger = logging.getLogger("whisperwriter.utils")
 
 
 def _load_model():
@@ -71,7 +74,11 @@ class ManagedModel:
     def load(self) -> None:
         with self._lock:
             if self._model is None:
-                self._model = self._loader()
+                try:
+                    self._model = self._loader()
+                except Exception:
+                    logger.exception("Failed to load the local model")
+                    raise
 
     def unload(self) -> None:
         with self._lock:

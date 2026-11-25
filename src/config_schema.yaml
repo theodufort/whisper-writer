@@ -40,7 +40,7 @@ model_options:
     model:
       value: base
       type: str
-      description: "The model to use for transcription. The larger models provide better accuracy but are slower."
+      description: "Which Whisper model to run locally. Larger models are more accurate but slower and use more GPU memory (tiny ~75 MB, base ~150 MB, small ~490 MB, medium ~1.5 GB, large ~3 GB). Names ending in .en are English-only and a little more accurate for English. Downloaded automatically on first use."
       options:
         - base
         - base.en
@@ -57,7 +57,7 @@ model_options:
     device:
       value: vulkan
       type: str
-      description: "The device to run the local Whisper model on. Use 'vulkan' for AMD/Intel/NVIDIA GPUs via whisper.cpp (requires pywhispercpp built with Vulkan), 'cuda' for NVIDIA GPUs via faster-whisper, 'cpu' for CPU-only processing, or 'auto' to let the system automatically choose the best available device."
+      description: "Where the local Whisper model runs. vulkan = any GPU with a Vulkan driver (AMD, NVIDIA, Intel) via whisper.cpp, the recommended default; cuda = NVIDIA GPU via faster-whisper; cpu = processor only; auto = let faster-whisper choose (CPU on non-NVIDIA PCs)."
       options:
         - auto
         - cuda
@@ -66,7 +66,7 @@ model_options:
     compute_type:
       value: default
       type: str
-      description: "The compute type to use for the local Whisper model."
+      description: "Numeric precision for the local model. Only used by the faster-whisper devices (cuda, cpu, auto); ignored when device is vulkan."
       options:
         - default
         - float32
@@ -79,7 +79,11 @@ model_options:
     vad_filter:
       value: false
       type: bool
-      description: "Set to true to use a voice activity detection (VAD) filter to remove silence from the recording."
+      description: "Set to true to use a voice activity detection (VAD) filter to remove silence from the recording. Only used by the faster-whisper devices (cuda, cpu, auto); ignored when device is vulkan."
+    model_dir:
+      value: null
+      type: str
+      description: "Folder where downloaded models are cached. Leave empty to use %LOCALAPPDATA%/whisper-writer/models. Models are downloaded only once."
     unload_when_idle:
       value: true
       type: bool

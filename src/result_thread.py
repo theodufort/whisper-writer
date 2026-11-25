@@ -1,5 +1,5 @@
+import logging
 import time
-import traceback
 from collections import deque
 from threading import Event
 
@@ -8,8 +8,8 @@ import webrtcvad
 from PyQt5.QtCore import QMutex, QThread, pyqtSignal
 
 from audio import open_input_stream, query_device_rate, resample
-from transcription import transcribe
 from core.config import ConfigManager
+from transcription import transcribe
 
 
 class ResultThread(QThread):
@@ -101,7 +101,7 @@ class ResultThread(QThread):
             self.resultSignal.emit(result)
 
         except Exception:
-            traceback.print_exc()
+            logging.getLogger("whisperwriter.utils").exception("Recording/transcription failed")
             self.statusSignal.emit("error")
             self.resultSignal.emit("")
         finally:
