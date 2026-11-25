@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from core.config import ConfigManager
 from transcription.api import transcribe_api
+from transcription.cleanup import get_cleaner
 from transcription.local import transcribe_local
 from transcription.postprocess import clean_transcription, post_process_transcription
 
@@ -16,8 +17,9 @@ def transcribe(audio_data, local_model=None):
     else:
         transcription = transcribe_local(audio_data, local_model)
 
-    # Drop Whisper's non-speech markers such as [BLANK_AUDIO].
+    # Drop Whisper's markers first so the LLM never sees them, then optionally let it tidy the text.
     transcription = clean_transcription(transcription)
+    transcription = get_cleaner().clean(transcription)
     return post_process_transcription(transcription)
 
 __all__ = ["transcribe"]

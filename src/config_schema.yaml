@@ -93,6 +93,37 @@ model_options:
       type: str
       description: "The path to the local Whisper model. If not specified, the default model will be downloaded."
 
+  # Optional cleanup of the transcript by a small local LLM (runs on the GPU via llama.cpp)
+  cleanup:
+    enabled:
+      value: false
+      type: bool
+      description: "Run the transcript through a small local LLM (1-4B) that fixes misheard words, punctuation and filler words before typing. Uses the GPU, and loads and unloads together with the Whisper model. The model (about 2 GB) is downloaded on first use."
+    model_repo:
+      value: Qwen/Qwen2.5-3B-Instruct-GGUF
+      type: str
+      description: "Hugging Face repository of the GGUF cleanup model. Any 1-4B instruct model works, for example Qwen/Qwen2.5-1.5B-Instruct-GGUF (smaller, faster) or Qwen/Qwen2.5-3B-Instruct-GGUF."
+    model_file:
+      value: qwen2.5-3b-instruct-q4_k_m.gguf
+      type: str
+      description: "GGUF file inside the repository above."
+    model_path:
+      value: null
+      type: str
+      description: "Path to a local GGUF file. If set, the repository settings above are ignored."
+    gpu_layers:
+      value: -1
+      type: int
+      description: "Number of model layers to run on the GPU. -1 means all layers; 0 runs on the CPU."
+    min_words:
+      value: 3
+      type: int
+      description: "Transcripts shorter than this many words are typed as-is, without cleanup."
+    custom_instructions:
+      value: null
+      type: str
+      description: "Optional extra rules for the cleanup model, for example: Always write Whisper Writer with capitals."
+
 # Configuration options for activation and recording
 recording_options:
   activation_key:

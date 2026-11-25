@@ -11,6 +11,7 @@ from input_simulation import InputSimulator
 from keylistener import KeyListener
 from model import create_local_model
 from result_thread import ResultThread
+from transcription.cleanup import get_cleaner
 from tray_launcher import TrayService
 from ui.main_window import MainWindow
 from ui.settings_window import SettingsWindow
@@ -71,6 +72,11 @@ class WhisperWriterApp(QObject):
         model_options = ConfigManager.get_config_section("model_options")
         self.local_model = create_local_model() if not model_options.get("use_api") else None
 
+        if get_cleaner().enabled and ConfigManager.get_config_value(
+            "model_options", "local", "unload_when_idle"
+        ) is False:
+            threading.Thread(target=get_cleaner().load, daemon=True).start()
+
         self.result_thread = None
 
         self.main_window = MainWindow()
@@ -121,6 +127,7 @@ class WhisperWriterApp(QObject):
             self.input_simulator.cleanup()
         if self.local_model:
             self.local_model.unload()  # release VRAM before the process exits / restarts
+        get_cleaner().unload()
 
     def exit_app(self):
         """
@@ -182,6 +189,8 @@ class WhisperWriterApp(QObject):
         if self.local_model:
             # Load the model into VRAM while the user is speaking (no-op if already loaded)
             threading.Thread(target=self.local_model.load, daemon=True).start()
+        if get_cleaner().enabled:
+            threading.Thread(target=get_cleaner().load, daemon=True).start()
         self.result_thread.finished.connect(
             lambda thread=self.result_thread: self._on_result_thread_finished(thread)
         )
@@ -197,12 +206,14 @@ class WhisperWriterApp(QObject):
         In continuous mode the finished thread has already been replaced by a new one,
         so the model stays loaded between auto-restarted segments.
         """
-        if thread is not self.result_thread or not self.local_model:
+        if thread is not self.result_thread:
             return
         if ConfigManager.get_config_value("model_options", "local", "unload_when_idle") is False:
             return
         # Off the UI thread: unload() waits on the model lock if a load is still running
-        threading.Thread(target=self.local_model.unload, daemon=True).start()
+        if self.local_model:
+            threading.Thread(target=self.local_model.unload, daemon=True).start()
+        threading.Thread(target=get_cleaner().unload, daemon=True).start()
 
     def stop_result_thread(self):
         """
