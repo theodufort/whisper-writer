@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from core.config import ConfigManager
 from input.backend import InputBackend
 from input.backends.evdev import EvdevBackend
 from input.backends.pynput import PynputBackend
 from input.chord import KeyChord
 from input.events import InputEvent, KeyCode
-from utils import ConfigManager
 
 
 class KeyListener:

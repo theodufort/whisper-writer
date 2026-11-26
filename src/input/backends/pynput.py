@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib
+import importlib.util
 
 from input.backend import InputBackend
 from input.events import InputEvent, KeyCode
@@ -50,7 +50,9 @@ class PynputBackend(InputBackend):
     def _translate_key_event(self, native_event) -> tuple[KeyCode, InputEvent]:
         """Translate a pynput event to our internal event representation."""
         pynput_key, is_press = native_event
-        key_code = self.key_map.get(pynput_key, KeyCode.SPACE)
+        key_code = self.key_map.get(pynput_key)
+        if key_code is None:
+            key_code = KeyCode.UNKNOWN
         event_type = InputEvent.KEY_PRESS if is_press else InputEvent.KEY_RELEASE
         return key_code, event_type
 
@@ -79,6 +81,8 @@ class PynputBackend(InputBackend):
             self.keyboard.Key.shift_r: KeyCode.SHIFT_RIGHT,
             self.keyboard.Key.alt_l: KeyCode.ALT_LEFT,
             self.keyboard.Key.alt_r: KeyCode.ALT_RIGHT,
+            # Layouts with an AltGr key (French, German, ...) report the right Alt as alt_gr.
+            self.keyboard.Key.alt_gr: KeyCode.ALT_RIGHT,
             self.keyboard.Key.cmd_l: KeyCode.META_LEFT,
             self.keyboard.Key.cmd_r: KeyCode.META_RIGHT,
             # Function keys

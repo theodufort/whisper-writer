@@ -10,6 +10,8 @@ class InputEvent(Enum):
     MOUSE_RELEASE = auto()
 
 class KeyCode(Enum):
+    # A key we have no mapping for; never part of an activation chord
+    UNKNOWN = auto()
     # Modifier keys
     CTRL_LEFT = auto(); CTRL_RIGHT = auto(); SHIFT_LEFT = auto(); SHIFT_RIGHT = auto()
     ALT_LEFT = auto(); ALT_RIGHT = auto(); META_LEFT = auto(); META_RIGHT = auto()

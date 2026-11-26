@@ -6,7 +6,7 @@ A guide for contributors. Users do not need this page.
 
 ```mermaid
 flowchart LR
-    K[Hotkey pressed<br/>input/ + keylistener] --> M[main.py<br/>WhisperWriterApp]
+    K[Hotkey pressed<br/>input/] --> M[main.py<br/>WhisperWriterApp]
     M -->|starts| R[result_thread.py<br/>ResultThread]
     M -.->|background threads| L1[Load Whisper]
     M -.->|background threads| L2[Load cleanup LLM]
@@ -21,7 +21,7 @@ flowchart LR
     R -->|session over| U[unload models]
 ```
 
-1. A global **hotkey** (`input/`, `keylistener.py`) tells `WhisperWriterApp` (`main.py`) to start a dictation.
+1. A global **hotkey** (`input/`) tells `WhisperWriterApp` (`main.py`) to start a dictation.
 2. `main.py` creates a `ResultThread` and, in background threads, **loads** the Whisper model and (if enabled) the
    cleanup model, so loading overlaps with the user speaking.
 3. `ResultThread` ([audio pipeline](audio-processing.md)) records until the recording mode says stop and emits the audio.
@@ -38,7 +38,7 @@ flowchart LR
 | `src/main.py` | `WhisperWriterApp`: Qt app, tray, windows; wires hotkey → `ResultThread` → typing; model load/unload timing. |
 | `src/result_thread.py` | `ResultThread` (QThread): one dictation = record → transcribe → emit text. |
 | `src/audio/` | Microphone stream (`stream.py`), device queries (`device.py`), resampling (`resampler.py`). |
-| `src/input/`, `src/keylistener.py` | Global hotkey detection; backends for Windows/pynput and Linux/evdev. |
+| `src/input/` | Global hotkey detection; backends for Windows/pynput and Linux/evdev. |
 | `src/input_simulation.py` | Typing the result (`pynput`, or `ydotool` / `dotool` on Linux). |
 | `src/transcription/base.py` | `transcribe()`: the pipeline in step 4 above. |
 | `src/transcription/model_factory.py` | `ManagedModel` (lazy load / thread-safe unload) and `_load_model()` choosing the engine from `local.device`. |

@@ -7,8 +7,8 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from core.config import ConfigManager
+from input import KeyListener
 from input_simulation import InputSimulator
-from keylistener import KeyListener
 from model import create_local_model
 from result_thread import ResultThread
 from transcription.cleanup import get_cleaner
